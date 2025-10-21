@@ -1,5 +1,6 @@
 ﻿namespace MNIST.Layers
 {
+    [Serializable]
     public static class Flatten
     {
         public static float[] Forward(float[,,] input)

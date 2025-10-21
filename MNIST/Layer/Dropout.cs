@@ -1,5 +1,6 @@
 ﻿namespace MNIST.Layer
 {
+    [Serializable]
     public class Dropout
     {
         private float rate;

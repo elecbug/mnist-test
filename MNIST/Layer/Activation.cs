@@ -2,6 +2,7 @@
 
 namespace MNIST.Layers
 {
+    [Serializable]
     public static class Activation
     {
         public static float ReLU(float x) => Math.Max(0, x);

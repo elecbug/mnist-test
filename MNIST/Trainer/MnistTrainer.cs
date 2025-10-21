@@ -4,6 +4,7 @@ using static MNIST.Network.Optimizer;
 
 namespace MNIST.Trainer
 {
+    [Serializable]
     public static class MnistTrainer
     {
         public static void Train(

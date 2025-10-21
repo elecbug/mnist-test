@@ -2,6 +2,7 @@
 
 namespace MNIST.Layers
 {
+    [Serializable]
     public class Conv2D
     {
         public int InChannels, OutChannels, KernelSize;

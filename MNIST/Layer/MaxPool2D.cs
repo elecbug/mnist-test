@@ -1,5 +1,6 @@
 ﻿namespace MNIST.Layers
 {
+    [Serializable]
     public class MaxPool2D
     {
         private int kernel;

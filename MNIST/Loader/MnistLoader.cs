@@ -1,5 +1,6 @@
 ﻿namespace MNIST.Loader
 {
+    [Serializable]
     public static class MnistLoader
     {
         private static int ReverseBytes(int v)

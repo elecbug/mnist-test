@@ -1,5 +1,6 @@
 ﻿namespace MNIST.Layer
 {
+    [Serializable]
     public class BatchNorm
     {
         private int size;

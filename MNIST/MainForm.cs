@@ -15,11 +15,15 @@ namespace MNIST
                 "dataset/train-images.idx3-ubyte",
                 "dataset/train-labels.idx1-ubyte");
 
-            var model = new CNNModel();
+            CNNModel model;
+            if (File.Exists("mnist_cnn_model.bin"))
+                model = CNNModel.Load("mnist_cnn_model.bin");
+            else
+                model = new CNNModel();
             var optimizer = new Adam(learningRate: 0.0003f);
             Debug.WriteLine("Training started...");
             MnistTrainer.Train(model, trainImages.GetRange(0, 2000),
-                trainLabels.GetRange(0, 2000), epochs: 2, batchSize: 32, optimizer: optimizer);
+                trainLabels.GetRange(0, 2000), epochs: 5, batchSize: 32, optimizer: optimizer);
             
             var (testImages, testLabels) = MnistLoader.Load(
                 "dataset/t10k-images.idx3-ubyte",
@@ -38,6 +42,8 @@ namespace MNIST
             }
 
             Debug.WriteLine($"\nTest Accuracy: {(float)correct / total * 100:F2}%");
+
+            model.Save("mnist_cnn_model.bin");
         }
     }
 }

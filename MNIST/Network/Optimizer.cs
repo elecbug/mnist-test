@@ -1,5 +1,6 @@
 ﻿namespace MNIST.Network
 {
+    [Serializable]
     public class Optimizer
     {
         public class Adam
