@@ -8,8 +8,8 @@ namespace MNIST.Layers
         public float[,,,] Weights; // [out, in, kH, kW]
         public float[] Bias;
 
-        private float[,,] lastInput;
-        private float[,,] lastOutput; // for ReLU derivative
+        private float[,,] lastInput = { };
+        private float[,,] lastOutput = { }; // for ReLU derivative
 
         public Conv2D(int inC, int outC, int k)
         {

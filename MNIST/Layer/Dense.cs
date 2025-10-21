@@ -13,7 +13,7 @@ namespace MNIST.Layers
         public float[] dBias;
 
         // Cache for backprop
-        private float[] lastInput;
+        private float[] lastInput = { };
 
         public Dense(int inputSize, int outputSize)
         {

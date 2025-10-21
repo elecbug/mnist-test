@@ -17,7 +17,7 @@ namespace MNIST.Network
         private Dense fc2;
 
         // cache for activation derivative
-        private float[] lastH1Activated;
+        private float[] lastH1Activated = { };
 
         public CNNModel()
         {

@@ -5,7 +5,7 @@
         private int kernel;
         private int stride;
 
-        private float[,,] lastInput;
+        private float[,,] lastInput = { };
 
         public MaxPool2D(int kernel = 2, int stride = 2)
         {

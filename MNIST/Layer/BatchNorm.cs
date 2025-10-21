@@ -5,11 +5,12 @@
         private int size;
         private float[] gamma;
         private float[] beta;
-        private float[] mean;
-        private float[] variance;
 
-        private float[] lastInput;
-        private float[] normed;
+        private float[] mean = { };
+        private float[] variance = { };
+
+        private float[] lastInput = { };
+        private float[] normed = { };
 
         private float eps = 1e-5f;
 

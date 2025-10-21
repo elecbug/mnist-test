@@ -3,7 +3,7 @@
     public class Dropout
     {
         private float rate;
-        private bool[] mask;
+        private bool[] mask = { };
         private Random rand = new();
 
         public Dropout(float rate = 0.5f)
