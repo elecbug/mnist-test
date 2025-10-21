@@ -1,4 +1,6 @@
-﻿namespace MNIST.Layers
+﻿using System;
+
+namespace MNIST.Layers
 {
     public class Conv2D
     {
@@ -6,7 +8,8 @@
         public float[,,,] Weights; // [out, in, kH, kW]
         public float[] Bias;
 
-        private float[,,] lastInput; // store input for backprop
+        private float[,,] lastInput;
+        private float[,,] lastOutput; // for ReLU derivative
 
         public Conv2D(int inC, int outC, int k)
         {
@@ -17,11 +20,12 @@
             Bias = new float[outC];
 
             var rand = new Random();
+            float limit = (float)Math.Sqrt(6.0 / (inC * k * k + outC * k * k));
             for (int o = 0; o < outC; o++)
                 for (int i = 0; i < inC; i++)
                     for (int y = 0; y < k; y++)
                         for (int x = 0; x < k; x++)
-                            Weights[o, i, y, x] = (float)(rand.NextDouble() - 0.5) * 0.1f;
+                            Weights[o, i, y, x] = (float)(rand.NextDouble() * 2 - 1) * limit;
         }
 
         public float[,,] Forward(float[,,] input)
@@ -45,29 +49,50 @@
                         output[o, y, x] = Activation.ReLU(sum);
                     }
 
+            lastOutput = output; 
             return output;
         }
 
         public float[,,] Backward(float[,,] dOut, float lr)
         {
-            float[,,] dInput = new float[InChannels, lastInput.GetLength(1), lastInput.GetLength(2)];
+            int inH = lastInput.GetLength(1);
+            int inW = lastInput.GetLength(2);
+            int outH = dOut.GetLength(1);
+            int outW = dOut.GetLength(2);
+
+            float[,,] dInput = new float[InChannels, inH, inW];
 
             for (int o = 0; o < OutChannels; o++)
+            {
                 for (int i = 0; i < InChannels; i++)
-                    for (int y = 0; y < dOut.GetLength(1); y++)
-                        for (int x = 0; x < dOut.GetLength(2); x++)
+                {
+                    float biosGrad = 0f;
+                    for (int y = 0; y < outH; y++)
+                    {
+                        for (int x = 0; x < outW; x++)
                         {
                             float grad = dOut[o, y, x];
+                            if (lastOutput[o, y, x] <= 0) grad = 0;
+
                             for (int ky = 0; ky < KernelSize; ky++)
+                            {
                                 for (int kx = 0; kx < KernelSize; kx++)
                                 {
                                     int iy = y + ky;
                                     int ix = x + kx;
+
                                     dInput[i, iy, ix] += grad * Weights[o, i, ky, kx];
+
                                     Weights[o, i, ky, kx] -= lr * grad * lastInput[i, iy, ix];
                                 }
-                            Bias[o] -= lr * grad;
+                            }
+                            biosGrad += grad;
                         }
+                        Bias[o] -= lr * biosGrad;
+                    }
+                }
+            }
+
             return dInput;
         }
     }
