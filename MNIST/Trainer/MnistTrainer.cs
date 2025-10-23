@@ -20,7 +20,13 @@ namespace MNIST.Trainer
 
             for (int e = 0; e < epochs; e++)
             {
-                Debug.WriteLine($"Starting epoch {e + 1}/{epochs}...");
+                // LR Decay
+                float initialLR = optimizer.LearningRate;
+                float decay = 0.95f;
+                optimizer.LearningRate = initialLR * MathF.Pow(decay, e);
+
+                Console.WriteLine($"Starting epoch {e + 1}/{epochs} (lr={optimizer.LearningRate:F6})...");
+
                 float totalLoss = 0;
                 int correct = 0;
 
@@ -44,24 +50,26 @@ namespace MNIST.Trainer
 
                         int predLabel = Array.IndexOf(pred, pred.Max());
                         if (predLabel == label) correct++;
-                        batchLoss += -MathF.Log(pred[label] + 1e-8f);
+
+                        float p = MathF.Max(1e-8f, MathF.Min(pred[label], 1f - 1e-8f));
+                        batchLoss += -MathF.Log(p);
 
                         float[] dLoss = new float[pred.Length];
                         for (int i = 0; i < pred.Length; i++)
-                            dLoss[i] = pred[i] - (i == label ? 1f : 0f); 
+                            dLoss[i] = pred[i] - (i == label ? 1f : 0f);
 
                         model.Backward(dLoss, lr: optimizer.LearningRate);
                     }
 
-                    model.Step(optimizer, 1f);
-
-                    totalLoss += batchLoss / batchCount; 
+                    model.Step(optimizer, 1f / batchCount);
+                    totalLoss += batchLoss / batchCount;
                 }
 
                 float avgLoss = totalLoss / (total / batchSize);
                 float acc = (float)correct / total * 100f;
-                Debug.WriteLine($"Epoch {e + 1} | Loss: {avgLoss:F4} | Acc: {acc:F2}%");
+                Debug.WriteLine($"Epoch {e + 1} | Loss: {avgLoss:F4} | Acc: {acc:F2}% | LR={optimizer.LearningRate:F6}");
             }
+
         }
     }
 }

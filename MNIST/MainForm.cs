@@ -142,8 +142,11 @@ namespace MNIST
                 "dataset/t10k-images.idx3-ubyte",
                 "dataset/t10k-labels.idx1-ubyte");
 
-            MnistTrainer.Train(CnnModel, trainImages.GetRange(0, 2000),
-                trainLabels.GetRange(0, 2000), epochs: 5, batchSize: 32, optimizer: optimizer);
+            int start = new Random().Next(0, 60000);
+            int end = Math.Min(start + 10000, 60000)- start;
+
+            MnistTrainer.Train(CnnModel, trainImages.GetRange(start, end),
+                trainLabels.GetRange(start, end), epochs: 5, batchSize: 32, optimizer: optimizer);
 
             SaveFileDialog sfd = new SaveFileDialog()
             {

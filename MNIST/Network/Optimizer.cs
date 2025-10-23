@@ -16,7 +16,7 @@
             private float lr;
             private int t = 0;
 
-            public float LearningRate => lr;
+            public float LearningRate { get=>lr; set=>lr=value; }
 
             public Adam(float learningRate = 0.001f)
             {
