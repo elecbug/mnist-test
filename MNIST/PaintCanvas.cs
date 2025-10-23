@@ -10,7 +10,8 @@ namespace MNIST
 {
     public class PaintCanvas : Panel
     {
-        public bool Drawing { get; set; } = false;
+        public bool Drawing { get; private set; } = false;
+        public Bitmap? Inverted { get; private set; }
         private Bitmap canvas;
         private Point lastPoint;
         private Color nowColor = Color.Black;
@@ -60,7 +61,6 @@ namespace MNIST
 
             if (minX >= maxX || minY >= maxY)
             {
-                Console.WriteLine("빈 이미지 감지, 공백 입력 반환");
                 return new float[1, size, size];
             }
 
@@ -90,8 +90,9 @@ namespace MNIST
             }
 
             centered.Save("debug_centered_mnist_style.png");
+            Inverted = new Bitmap(centered);
 
-            float gamma = 0.5f; 
+            float gamma = 1f; 
             float[,,] mnistInput = new float[1, size, size];
 
             for (int y = 0; y < size; y++)
@@ -131,7 +132,7 @@ namespace MNIST
                 if (!Drawing) return;
 
                 using Graphics g = Graphics.FromImage(canvas);
-                int penSize = 15;
+                int penSize = 10;
                 Brush brush = new SolidBrush(nowColor);
                 g.DrawEllipse(new Pen(brush, penSize), 
                     e.Location.X - penSize / 2, e.Location.Y - penSize / 2, penSize, penSize);

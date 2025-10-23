@@ -13,13 +13,17 @@ namespace MNIST
         private CNNModel? CnnModel { get; set; }
         private Label SelectedModelLabel { get; set; }
         private PaintCanvas DrawingCanvas { get; set; }
-        private Label PredicteLabel { get; set; }
+        private PictureBox InvertedPBox { get; set; }
+        private Label PredictLabel { get; set; }
+        private Label[] PredictLabels { get; set; }
+        private ProgressBar[] PredictBars { get; set; }
 
         public MainForm()
         {
             {
+                Text = "MNIST Tester";
                 Width = 800;
-                Height = 600;
+                Height = 800;
             }
 
             MainMenu = new MenuStrip()
@@ -45,7 +49,18 @@ namespace MNIST
                 BorderStyle = BorderStyle.FixedSingle,
             };
 
-            PredicteLabel = new Label()
+            InvertedPBox = new PictureBox()
+            {
+                Parent = this,
+                Top = 100,
+                Left = 400,
+                Width = 280,
+                Height = 280,
+                BorderStyle = BorderStyle.FixedSingle,
+                SizeMode = PictureBoxSizeMode.StretchImage,
+            };
+
+            PredictLabel = new Label()
             {
                 Parent = this,
                 Text = "Draw a digit and use Convert to predict.",
@@ -53,6 +68,31 @@ namespace MNIST
                 Top = 400,
                 Left = 50,
             };
+            PredictLabels = new Label[10];
+            PredictBars = new ProgressBar[10];
+
+            for (int i = 0; i < 10; i++)
+            {
+                PredictLabels[i] = new Label()
+                {
+                    Parent = this,
+                    Text = $"{i}: ",
+                    AutoSize = true,
+                    Top = 430 + i * 25,
+                    Left = 50,
+                };
+
+                PredictBars[i] = new ProgressBar()
+                {
+                    Parent = this,
+                    Top = 430 + i * 25,
+                    Left = 80,
+                    Width = 600,
+                    Height = 20,
+                    Minimum = 0,
+                    Maximum = 100,
+                };
+            }
 
             MainMenu.Items.Add("Load Model", null, (s, e) => LoadModel());
             MainMenu.Items.Add("Train Model", null, (s, e) =>TrainModel());
@@ -171,7 +211,14 @@ namespace MNIST
 
                     Invoke(() =>
                     {
-                        PredicteLabel.Text = $"Predicted Digit: {predicted}";
+                        PredictLabel.Text = $"Predicted Digit: {predicted}\r\n";
+
+                        for (int i = 0; i < 10; i++)
+                        {
+                            PredictBars[i].Value = (int)(pred[i] * 100f);
+                        }
+
+                        InvertedPBox.Image = DrawingCanvas.Inverted;
                     });
 
                     drawed = false;
