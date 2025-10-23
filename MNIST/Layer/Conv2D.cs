@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MNIST.Tensor;
+using System;
 
 namespace MNIST.Layers
 {
@@ -6,18 +7,18 @@ namespace MNIST.Layers
     public class Conv2D
     {
         public int InChannels, OutChannels, KernelSize;
-        public float[,,,] Weights; // [out, in, kH, kW]
+        public Tensor4D Weights; // [out, in, kH, kW]
         public float[] Bias;
 
-        private float[,,] lastInput = { };
-        private float[,,] lastOutput = { }; // for ReLU derivative
+        private Tensor3D? lastInput;
+        private Tensor3D? lastOutput; // for ReLU derivative
 
         public Conv2D(int inC, int outC, int k)
         {
             InChannels = inC;
             OutChannels = outC;
             KernelSize = k;
-            Weights = new float[outC, inC, k, k];
+            Weights = new Tensor4D(outC, inC, k, k);
             Bias = new float[outC];
 
             var rand = new Random();
@@ -26,17 +27,17 @@ namespace MNIST.Layers
                 for (int i = 0; i < inC; i++)
                     for (int y = 0; y < k; y++)
                         for (int x = 0; x < k; x++)
-                            Weights[o, i, y, x] = (float)(rand.NextDouble() * 2 - 1) * limit;
+                            Weights.Set(o, i, y, x, (float)(rand.NextDouble() * 2 - 1) * limit);
         }
 
-        public float[,,] Forward(float[,,] input)
+        public Tensor3D Forward(Tensor3D input)
         {
             lastInput = input;
-            int inH = input.GetLength(1);
-            int inW = input.GetLength(2);
+            int inH = input.Range1;
+            int inW = input.Range2;
             int outH = inH - KernelSize + 1;
             int outW = inW - KernelSize + 1;
-            float[,,] output = new float[OutChannels, outH, outW];
+            Tensor3D output = new Tensor3D(OutChannels, outH, outW);
 
             for (int o = 0; o < OutChannels; o++)
                 for (int y = 0; y < outH; y++)
@@ -46,22 +47,22 @@ namespace MNIST.Layers
                         for (int i = 0; i < InChannels; i++)
                             for (int ky = 0; ky < KernelSize; ky++)
                                 for (int kx = 0; kx < KernelSize; kx++)
-                                    sum += input[i, y + ky, x + kx] * Weights[o, i, ky, kx];
-                        output[o, y, x] = Activation.ReLU(sum);
+                                    sum += input.Get(i, y + ky, x + kx) * Weights.Get(o, i, ky, kx);
+                        output.Set(o, y, x, Activation.ReLU(sum));
                     }
 
-            lastOutput = output; 
+            lastOutput = output;
             return output;
         }
 
-        public float[,,] Backward(float[,,] dOut, float lr)
+        public Tensor3D Backward(Tensor3D dOut, float lr)
         {
-            int inH = lastInput.GetLength(1);
-            int inW = lastInput.GetLength(2);
-            int outH = dOut.GetLength(1);
-            int outW = dOut.GetLength(2);
+            int inH = lastInput!.Range1;
+            int inW = lastInput.Range2;
+            int outH = dOut.Range1;
+            int outW = dOut.Range2;
 
-            float[,,] dInput = new float[InChannels, inH, inW];
+            Tensor3D dInput = new Tensor3D(InChannels, inH, inW);
 
             for (int o = 0; o < OutChannels; o++)
             {
@@ -72,8 +73,8 @@ namespace MNIST.Layers
                     {
                         for (int x = 0; x < outW; x++)
                         {
-                            float grad = dOut[o, y, x];
-                            if (lastOutput[o, y, x] <= 0) grad = 0;
+                            float grad = dOut.Get(o, y, x);
+                            if (lastOutput!.Get(o, y, x) <= 0) grad = 0;
 
                             for (int ky = 0; ky < KernelSize; ky++)
                             {
@@ -82,9 +83,9 @@ namespace MNIST.Layers
                                     int iy = y + ky;
                                     int ix = x + kx;
 
-                                    dInput[i, iy, ix] += grad * Weights[o, i, ky, kx];
+                                    dInput.Set(i, iy, ix, dInput.Get(i, iy, ix) + grad * Weights.Get(o, i, ky, kx));
 
-                                    Weights[o, i, ky, kx] -= lr * grad * lastInput[i, iy, ix];
+                                    Weights.Set(o, i, ky, kx, Weights.Get(o, i, ky, kx) - lr * grad * lastInput.Get(i, iy, ix));
                                 }
                             }
                             biosGrad += grad;

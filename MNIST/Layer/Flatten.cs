@@ -1,19 +1,24 @@
-﻿namespace MNIST.Layers
+﻿using MNIST.Tensor;
+
+namespace MNIST.Layers
 {
     [Serializable]
     public static class Flatten
     {
-        public static float[] Forward(float[,,] input)
+        public static Tensor1D Forward(Tensor3D input)
         {
-            int c = input.GetLength(0);
-            int h = input.GetLength(1);
-            int w = input.GetLength(2);
-            float[] flat = new float[c * h * w];
+            int c = input.Range0;
+            int h = input.Range1;
+            int w = input.Range2;
+            Tensor1D flat = new Tensor1D(c * h * w);
             int idx = 0;
             for (int i = 0; i < c; i++)
                 for (int y = 0; y < h; y++)
                     for (int x = 0; x < w; x++)
-                        flat[idx++] = input[i, y, x];
+                    {
+                        flat.Set(idx, input.Get(i, y, x));
+                        idx++;
+                    }
             return flat;
         }
 

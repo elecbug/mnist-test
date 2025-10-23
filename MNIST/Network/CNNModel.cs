@@ -1,5 +1,6 @@
 ﻿using MNIST.Layer;
 using MNIST.Layers;
+using MNIST.Tensor;
 using System;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -18,9 +19,8 @@ namespace MNIST.Network
         private Dense fc2;
         private Dropout drop1;
 
-
         // cache for activation derivative
-        private float[] lastH1Activated = { };
+        private Tensor1D? lastH1Activated;
 
         public CNNModel()
         {
@@ -33,7 +33,7 @@ namespace MNIST.Network
             drop1 = new Dropout(0.3f);
         }
 
-        public (float[] logits, float[,,] convOut) Forward(float[,,] input, bool training = true)
+        public (Tensor1D logits, Tensor3D convOut) Forward(Tensor3D input, bool training = true)
         {
             var x = conv1.Forward(input);
             x = pool1.Forward(x);
@@ -50,14 +50,14 @@ namespace MNIST.Network
         }
 
 
-        public void Backward(float[] dLoss, float lr = 0.001f)
+        public void Backward(Tensor1D dLoss, float lr = 0.001f)
         {
             var dFc2 = fc2.Backward(dLoss);
             var dDrop = drop1.Backward(dFc2);
 
-            var dAct = Activation.DLeakyFromActivated(lastH1Activated);
-            for (int i = 0; i < dDrop.Length; i++)
-                dDrop[i] *= dAct[i];
+            var dAct = Activation.DLeakyFromActivated(lastH1Activated!);
+            for (int i = 0; i < dDrop.Range0; i++)
+                dDrop.Set(i, dDrop.Get(i) * dAct.Get(i));
 
             var dFc1 = fc1.Backward(dDrop);
             var dConvIn = To3D(dFc1, 16, 5, 5);
@@ -67,14 +67,13 @@ namespace MNIST.Network
             conv1.Backward(dPool1, lr);
         }
 
-
         public void ZeroGrad()
         {
             // DO NOT reassign arrays; just clear them.
-            Array.Clear(fc1.dWeights, 0, fc1.dWeights.Length);
-            Array.Clear(fc1.dBias, 0, fc1.dBias.Length);
-            Array.Clear(fc2.dWeights, 0, fc2.dWeights.Length);
-            Array.Clear(fc2.dBias, 0, fc2.dBias.Length);
+            fc1.dWeights.ArrayClear();
+            fc1.dBias.ArrayClear();
+            fc2.dWeights.ArrayClear();
+            fc2.dBias.ArrayClear();
         }
 
         // Adam step for FC layers; convs are updated inside their Backward via lr (SGD)
@@ -87,30 +86,34 @@ namespace MNIST.Network
                      Scale(fc2.dWeights, scale), Scale(fc2.dBias, scale));
         }
 
-        private float[,] Scale(float[,] arr, float scale)
+        private Tensor2D Scale(Tensor2D arr, float scale)
         {
-            var r = new float[arr.GetLength(0), arr.GetLength(1)];
-            for (int i = 0; i < arr.GetLength(0); i++)
-                for (int j = 0; j < arr.GetLength(1); j++)
-                    r[i, j] = arr[i, j] * scale;
+            var r = new Tensor2D(arr.Range0, arr.Range1);
+            for (int i = 0; i < arr.Range0; i++)
+                for (int j = 0; j < arr.Range1; j++)
+                    r.Set(i, j, arr.Get(i, j) * scale);
             return r;
         }
 
-        private float[] Scale(float[] arr, float scale)
+        private Tensor1D Scale(Tensor1D arr, float scale)
         {
-            var r = new float[arr.Length];
-            for (int i = 0; i < arr.Length; i++) r[i] = arr[i] * scale;
+            var r = new Tensor1D(arr.Range0);
+            for (int i = 0; i < arr.Range0; i++) 
+                r.Set(i, arr.Get(i) * scale);
             return r;
         }
 
-        private float[,,] To3D(float[] flat, int c, int h, int w)
+        private Tensor3D To3D(Tensor1D flat, int c, int h, int w)
         {
-            float[,,] x = new float[c, h, w];
+            Tensor3D x = new Tensor3D(c, h, w);
             int idx = 0;
             for (int i = 0; i < c; i++)
                 for (int y = 0; y < h; y++)
                     for (int z = 0; z < w; z++)
-                        x[i, y, z] = flat[idx++];
+                    {
+                        x.Set(i, y, z, flat.Get(idx));
+                        idx++;
+                    }
             return x;
         }
 

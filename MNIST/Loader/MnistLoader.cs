@@ -1,4 +1,6 @@
-﻿namespace MNIST.Loader
+﻿using MNIST.Tensor;
+
+namespace MNIST.Loader
 {
     [Serializable]
     public static class MnistLoader
@@ -10,7 +12,7 @@
             return BitConverter.ToInt32(bytes, 0);
         }
 
-        public static (List<float[,,]> images, List<int> labels) Load(string imgPath, string lblPath)
+        public static (List<Tensor3D> images, List<int> labels) Load(string imgPath, string lblPath)
         {
             using var imgFs = new FileStream(imgPath, FileMode.Open);
             using var lblFs = new FileStream(lblPath, FileMode.Open);
@@ -24,15 +26,15 @@
             lblBr.ReadInt32();
             lblBr.ReadInt32();
 
-            var images = new List<float[,,]>(numImages);
+            var images = new List<Tensor3D>(numImages);
             var labels = new List<int>(numImages);
 
             for (int i = 0; i < numImages; i++)
             {
-                float[,,] img = new float[1, numRows, numCols]; // [channel, height, width]
+                Tensor3D img = new Tensor3D(1, numRows, numCols); // [channel, height, width]
                 for (int r = 0; r < numRows; r++)
                     for (int c = 0; c < numCols; c++)
-                        img[0, r, c] = imgBr.ReadByte() / 255f;
+                        img.Set(0, r, c, imgBr.ReadByte() / 255f);
 
                 images.Add(img);
                 labels.Add(lblBr.ReadByte());

@@ -1,4 +1,6 @@
-﻿namespace MNIST.Layer
+﻿using MNIST.Tensor;
+
+namespace MNIST.Layer
 {
     [Serializable]
     public class Dropout
@@ -11,25 +13,23 @@
             this.rate = rate;
         }
 
-        public float[] Forward(float[] input, bool training = true)
+        public Tensor1D Forward(Tensor1D input, bool training = true)
         {
-
-
-            mask = new bool[input.Length];
-            float[] output = new float[input.Length];
-            for (int i = 0; i < input.Length; i++)
+            mask = new bool[input.Range0];
+            Tensor1D output = new Tensor1D(input.Range0);
+            for (int i = 0; i < input.Range0; i++)
             {
                 mask[i] = training ? new Random().NextDouble() > rate : true;
-                output[i] = mask[i] ? input[i] / (1f - rate) : 0f;
+                output.Set(i, mask[i] ? input.Get(i) / (1f - rate) : 0f);
             }
             return output;
         }
 
-        public float[] Backward(float[] dOut)
+        public Tensor1D Backward(Tensor1D dOut)
         {
-            float[] dInput = new float[dOut.Length];
-            for (int i = 0; i < dOut.Length; i++)
-                dInput[i] = mask[i] ? dOut[i] / (1f - rate) : 0f;
+            Tensor1D dInput = new Tensor1D(dOut.Range0);
+            for (int i = 0; i < dOut.Range0; i++)
+                dInput.Set(i, mask[i] ? dOut.Get(i) / (1f - rate) : 0f);
             return dInput;
         }
     }

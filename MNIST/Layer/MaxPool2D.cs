@@ -1,4 +1,6 @@
-﻿namespace MNIST.Layers
+﻿using MNIST.Tensor;
+
+namespace MNIST.Layers
 {
     [Serializable]
     public class MaxPool2D
@@ -6,7 +8,7 @@
         private int kernel;
         private int stride;
 
-        private float[,,] lastInput = { };
+        private Tensor3D? lastInput;
 
         public MaxPool2D(int kernel = 2, int stride = 2)
         {
@@ -14,16 +16,16 @@
             this.stride = stride;
         }
 
-        public float[,,] Forward(float[,,] input)
+        public Tensor3D Forward(Tensor3D input)
         {
             lastInput = input;
-            int c = input.GetLength(0);
-            int inH = input.GetLength(1);
-            int inW = input.GetLength(2);
+            int c = input.Range0;
+            int inH = input.Range1;
+            int inW = input.Range2;
             int outH = inH / stride;
             int outW = inW / stride;
 
-            float[,,] output = new float[c, outH, outW];
+            Tensor3D output = new Tensor3D(c, outH, outW);
             for (int ch = 0; ch < c; ch++)
             {
                 for (int y = 0; y < outH; y++)
@@ -38,25 +40,25 @@
                                 int iy = y * stride + ky;
                                 int ix = x * stride + kx;
                                 if (iy < inH && ix < inW)
-                                    max = Math.Max(max, input[ch, iy, ix]);
+                                    max = Math.Max(max, input.Get(ch, iy, ix));
                             }
                         }
-                        output[ch, y, x] = max;
+                        output.Set(ch, y, x, max);
                     }
                 }
             }
             return output;
         }
 
-        public float[,,] Backward(float[,,] dOut)
+        public Tensor3D Backward(Tensor3D dOut)
         {
-            int c = lastInput.GetLength(0);
-            int inH = lastInput.GetLength(1);
-            int inW = lastInput.GetLength(2);
-            float[,,] dInput = new float[c, inH, inW];
+            int c = lastInput!.Range0;
+            int inH = lastInput.Range1;
+            int inW = lastInput.Range2;
+            Tensor3D dInput = new Tensor3D(c, inH, inW);
 
-            int outH = dOut.GetLength(1);
-            int outW = dOut.GetLength(2);
+            int outH = dOut.Range1;
+            int outW = dOut.Range2;
 
             for (int ch = 0; ch < c; ch++)
             {
@@ -74,7 +76,7 @@
                                 int ix = x * stride + kx;
                                 if (iy < inH && ix < inW)
                                 {
-                                    float val = lastInput[ch, iy, ix];
+                                    float val = lastInput.Get(ch, iy, ix);
                                     if (val > max)
                                     {
                                         max = val;
@@ -85,7 +87,7 @@
                             }
                         }
                         if (maxY >= 0 && maxX >= 0)
-                            dInput[ch, maxY, maxX] = dOut[ch, y, x];
+                            dInput.Set(ch, maxY, maxX, dOut.Get(ch, y, x));
                     }
                 }
             }

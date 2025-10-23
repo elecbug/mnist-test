@@ -1,14 +1,16 @@
-﻿namespace MNIST.Network
+﻿using MNIST.Tensor;
+
+namespace MNIST.Network
 {
     [Serializable]
     public class Optimizer
     {
         public class Adam
         {
-            private Dictionary<float[,], (float[,], float[,])> mW = new();
-            private Dictionary<float[,], (float[,], float[,])> vW = new();
-            private Dictionary<float[], (float[], float[])> mB = new();
-            private Dictionary<float[], (float[], float[])> vB = new();
+            private Dictionary<Tensor2D, (Tensor2D, Tensor2D)> mW = new();
+            private Dictionary<Tensor2D, (Tensor2D, Tensor2D)> vW = new();
+            private Dictionary<Tensor1D, (Tensor1D, Tensor1D)> mB = new();
+            private Dictionary<Tensor1D, (Tensor1D, Tensor1D)> vB = new();
 
             private float beta1 = 0.9f;
             private float beta2 = 0.999f;
@@ -23,36 +25,36 @@
                 lr = learningRate;
             }
 
-            public void Step(ref float[,] W, ref float[] B, float[,] dW, float[] dB)
+            public void Step(ref Tensor2D W, ref Tensor1D B, Tensor2D dW, Tensor1D dB)
             {
                 t++;
                 if (!mW.ContainsKey(W))
-                    mW[W] = (new float[W.GetLength(0), W.GetLength(1)], new float[W.GetLength(0), W.GetLength(1)]);
+                    mW[W] = (new Tensor2D(W.Range0, W.Range1), new Tensor2D(W.Range0, W.Range1));
                 if (!mB.ContainsKey(B))
-                    mB[B] = (new float[B.Length], new float[B.Length]);
+                    mB[B] = (new Tensor1D(B.Range0), new Tensor1D(B.Range0));
 
                 var (mw, vw) = mW[W];
                 var (mb, vb) = mB[B];
 
-                for (int i = 0; i < W.GetLength(0); i++)
-                    for (int j = 0; j < W.GetLength(1); j++)
+                for (int i = 0; i < W.Range0; i++)
+                    for (int j = 0; j < W.Range1; j++)
                     {
-                        mw[i, j] = beta1 * mw[i, j] + (1 - beta1) * dW[i, j];
-                        vw[i, j] = beta2 * vw[i, j] + (1 - beta2) * dW[i, j] * dW[i, j];
+                        mw.Set(i, j, beta1 * mw.Get(i, j) + (1 - beta1) * dW.Get(i, j));
+                        vw.Set(i, j, beta2 * vw.Get(i, j) + (1 - beta2) * dW.Get(i, j) * dW.Get(i, j));
 
-                        float mwc = mw[i, j] / (1 - MathF.Pow(beta1, t));
-                        float vwc = vw[i, j] / (1 - MathF.Pow(beta2, t));
-                        W[i, j] -= lr * mwc / (MathF.Sqrt(vwc) + eps);
+                        float mwc = mw.Get(i, j) / (1 - MathF.Pow(beta1, t));
+                        float vwc = vw.Get(i, j) / (1 - MathF.Pow(beta2, t));
+                        W.Set(i, j, W.Get(i, j) - lr * mwc / (MathF.Sqrt(vwc) + eps));
                     }
 
-                for (int i = 0; i < B.Length; i++)
+                for (int i = 0; i < B.Range0; i++)
                 {
-                    mb[i] = beta1 * mb[i] + (1 - beta1) * dB[i];
-                    vb[i] = beta2 * vb[i] + (1 - beta2) * dB[i] * dB[i];
+                    mb.Set(i, beta1 * mb.Get(i) + (1 - beta1) * dB.Get(i));
+                    vb.Set(i, beta2 * vb.Get(i) + (1 - beta2) * dB.Get(i) * dB.Get(i));
 
-                    float mbc = mb[i] / (1 - MathF.Pow(beta1, t));
-                    float vbc = vb[i] / (1 - MathF.Pow(beta2, t));
-                    B[i] -= lr * mbc / (MathF.Sqrt(vbc) + eps);
+                    float mbc = mb.Get(i) / (1 - MathF.Pow(beta1, t));
+                    float vbc = vb.Get(i) / (1 - MathF.Pow(beta2, t));
+                    B.Set(i, B.Get(i) - lr * mbc / (MathF.Sqrt(vbc) + eps));
                 }
 
                 mW[W] = (mw, vw);

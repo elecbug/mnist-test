@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MNIST.Tensor;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -17,7 +18,7 @@ namespace MNIST
         private Color nowColor = Color.Black;
         private Color clearColor = Color.White;
 
-        public float[,,] ToMnistInput()
+        public Tensor3D ToMnistInput()
         {
             int size = 28;
             using Bitmap bmp = new Bitmap(size, size);
@@ -61,7 +62,7 @@ namespace MNIST
 
             if (minX >= maxX || minY >= maxY)
             {
-                return new float[1, size, size];
+                return new Tensor3D(1, size, size);
             }
 
             int w = maxX - minX + 1;
@@ -93,7 +94,7 @@ namespace MNIST
             Inverted = new Bitmap(centered);
 
             float gamma = 1f; 
-            float[,,] mnistInput = new float[1, size, size];
+            Tensor3D mnistInput = new Tensor3D(1, size, size);
 
             for (int y = 0; y < size; y++)
             {
@@ -103,7 +104,7 @@ namespace MNIST
                     float gray = (c.R + c.G + c.B) / 3f / 255f;
 
                     float boosted = MathF.Pow(gray, gamma);
-                    mnistInput[0, y, x] = boosted;
+                    mnistInput.Set(0, y, x, boosted);
                 }
             }
 

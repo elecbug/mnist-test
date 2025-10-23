@@ -1,8 +1,10 @@
 using MNIST.Loader;
 using MNIST.Network;
+using MNIST.Tensor;
 using MNIST.Trainer;
 using System.Diagnostics;
 using System.Reflection;
+using System.Text.Json;
 using static MNIST.Network.Optimizer;
 
 namespace MNIST
@@ -12,6 +14,7 @@ namespace MNIST
         private MenuStrip MainMenu { get; set; }
         private CNNModel? CnnModel { get; set; }
         private Label SelectedModelLabel { get; set; }
+        private Label TrainLabel { get; set; }
         private PaintCanvas DrawingCanvas { get; set; }
         private PictureBox InvertedPBox { get; set; }
         private Label PredictLabel { get; set; }
@@ -24,8 +27,8 @@ namespace MNIST
         {
             {
                 Text = "MNIST Tester";
-                Width = 800;
-                Height = 800;
+                Width = 750;
+                Height = 1000;
             }
 
             MainMenu = new MenuStrip()
@@ -43,10 +46,19 @@ namespace MNIST
                 Left = 50,
             };
 
+            TrainLabel = new Label()
+            {
+                Parent = this,
+                Text = "Training Information.",
+                AutoSize = true,
+                Top = 80,
+                Left = 50,
+            };
+
             DrawingCanvas = new PaintCanvas(280, 280)
             {
                 Parent = this,
-                Top = 100,
+                Top = 130,
                 Left = 50,
                 BorderStyle = BorderStyle.FixedSingle,
             };
@@ -54,7 +66,7 @@ namespace MNIST
             InvertedPBox = new PictureBox()
             {
                 Parent = this,
-                Top = 100,
+                Top = 130,
                 Left = 400,
                 Width = 280,
                 Height = 280,
@@ -67,7 +79,7 @@ namespace MNIST
                 Parent = this,
                 Text = "Draw a digit and use Convert to predict.",
                 AutoSize = true,
-                Top = 400,
+                Top = 430,
                 Left = 50,
             };
             PredictLabels = new Label[10];
@@ -80,17 +92,19 @@ namespace MNIST
                     Parent = this,
                     Text = $"{i}: ",
                     AutoSize = true,
-                    Top = 430 + i * 25,
+                    Top = 460 + i * 30,
                     Left = 50,
+                    TextAlign = ContentAlignment.MiddleRight,
+                    Font = new Font(Font.Name, 9),
                 };
 
                 PredictBars[i] = new ProgressBar()
                 {
                     Parent = this,
-                    Top = 430 + i * 25,
-                    Left = 80,
-                    Width = 600,
-                    Height = 20,
+                    Top = 460 + i * 30,
+                    Left = 100,
+                    Width = 500,
+                    Height = 25,
                     Minimum = 0,
                     Maximum = 100,
                 };
@@ -132,36 +146,48 @@ namespace MNIST
             if (CnnModel == null)
                 CnnModel = new CNNModel();
 
-            var optimizer = new Adam(learningRate: 0.0003f);
+            string tempModel = JsonSerializer.Serialize(CnnModel);
 
-            var (trainImages, trainLabels) = MnistLoader.Load(
-            "dataset/train-images.idx3-ubyte",
-            "dataset/train-labels.idx1-ubyte");
+            CancellationToken cancellationToken = new CancellationToken();
 
-            var (testImages, testLabels) = MnistLoader.Load(
-                "dataset/t10k-images.idx3-ubyte",
-                "dataset/t10k-labels.idx1-ubyte");
-
-            int start = new Random().Next(0, 60000);
-            int end = Math.Min(start + 10000, 60000)- start;
-
-            MnistTrainer.Train(CnnModel, trainImages.GetRange(start, end),
-                trainLabels.GetRange(start, end), epochs: 5, batchSize: 32, optimizer: optimizer);
-
-            SaveFileDialog sfd = new SaveFileDialog()
+            Task.Run(() =>
             {
-                Filter = "Binary Files|*.bin",
-                Title = "Save CNN Model After Training",
-            };
+                var optimizer = new Adam(learningRate: 0.0003f);
 
-            if (sfd.ShowDialog() == DialogResult.OK)
-            {
-                CnnModel.Save(sfd.FileName);
-                SelectedModelLabel.Text = $"Loaded Model: {Path.GetFileName(sfd.FileName)}";
+                var (trainImages, trainLabels) = MnistLoader.Load(
+                    "dataset/train-images.idx3-ubyte",
+                    "dataset/train-labels.idx1-ubyte");
 
-                MessageBox.Show("Training completed!", "Info",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
+                var (testImages, testLabels) = MnistLoader.Load(
+                    "dataset/t10k-images.idx3-ubyte",
+                    "dataset/t10k-labels.idx1-ubyte");
+
+                int start = new Random().Next(0, 60000);
+                int end = Math.Min(start + 10000, 60000) - start;
+
+                //int start = 0, end = 60000;
+
+                MnistTrainer.Train(CnnModel, trainImages.GetRange(start, end),
+                    trainLabels.GetRange(start, end), epochs: 5, batchSize: 32, optimizer: optimizer, TrainLabel);
+
+                Invoke(() =>
+                {
+                    SaveFileDialog sfd = new SaveFileDialog()
+                    {
+                        Filter = "Binary Files|*.bin",
+                        Title = "Save CNN Model After Training",
+                    };
+
+                    if (sfd.ShowDialog() == DialogResult.OK)
+                    {
+                        CnnModel.Save(sfd.FileName);
+                        SelectedModelLabel.Text = $"Loaded Model: {Path.GetFileName(sfd.FileName)}";
+
+                        MessageBox.Show("Training completed!", "Info",
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                });
+            }, cancellationToken);
         }
 
         private void TestModel()
@@ -182,7 +208,7 @@ namespace MNIST
             for (int i = 0; i < total; i++)
             {
                 var (pred, _) = CnnModel.Forward(testImages[i]);
-                int predicted = Array.IndexOf(pred, pred.Max());
+                int predicted = pred.IndexOfMax();
 
                 if (predicted == testLabels[i])
                     correct++;
@@ -209,7 +235,7 @@ namespace MNIST
 
                 if (drawed)
                 {
-                    float[,,] mnistInput;
+                    Tensor3D mnistInput;
 
                     lock (DrawingCanvas)
                     {
@@ -217,7 +243,7 @@ namespace MNIST
                     }
 
                     var (pred, _) = CnnModel.Forward(mnistInput);
-                    int predicted = Array.IndexOf(pred, pred.Max());
+                    int predicted = pred.IndexOfMax();
 
                     Invoke(() =>
                     {
@@ -225,7 +251,7 @@ namespace MNIST
 
                         for (int i = 0; i < 10; i++)
                         {
-                            PredictBars[i].Value = (int)(pred[i] * 100f);
+                            PredictBars[i].Value = (int)(pred.Get(i) * 100f);
                         }
 
                         InvertedPBox.Image = DrawingCanvas.Inverted;

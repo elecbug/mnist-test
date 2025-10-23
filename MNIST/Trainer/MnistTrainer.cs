@@ -1,4 +1,5 @@
 ﻿using MNIST.Network;
+using MNIST.Tensor;
 using System.Diagnostics;
 using static MNIST.Network.Optimizer;
 
@@ -9,14 +10,23 @@ namespace MNIST.Trainer
     {
         public static void Train(
             CNNModel model,
-            List<float[,,]> trainImages,
+            List<Tensor3D> trainImages,
             List<int> trainLabels,
             int epochs,
             int batchSize,
-            Adam optimizer)
+            Adam optimizer,
+            Label? trainLabel)
         {
             int total = trainImages.Count;
             var rand = new Random();
+
+            if (trainLabel != null)
+            {
+                trainLabel.Parent!.Invoke(() =>
+                {
+                    trainLabel.Text = $"Starting training for {epochs} epochs...";
+                });
+            }
 
             for (int e = 0; e < epochs; e++)
             {
@@ -48,15 +58,15 @@ namespace MNIST.Trainer
 
                         var (pred, _) = model.Forward(img, training: true);
 
-                        int predLabel = Array.IndexOf(pred, pred.Max());
+                        int predLabel = pred.IndexOfMax();
                         if (predLabel == label) correct++;
 
-                        float p = MathF.Max(1e-8f, MathF.Min(pred[label], 1f - 1e-8f));
+                        float p = MathF.Max(1e-8f, MathF.Min(pred.Get(label), 1f - 1e-8f));
                         batchLoss += -MathF.Log(p);
 
-                        float[] dLoss = new float[pred.Length];
-                        for (int i = 0; i < pred.Length; i++)
-                            dLoss[i] = pred[i] - (i == label ? 1f : 0f);
+                        Tensor1D dLoss = new Tensor1D(pred.Range0);
+                        for (int i = 0; i < pred.Range0; i++)
+                            dLoss.Set(i, pred.Get(i) - (i == label ? 1f : 0f));
 
                         model.Backward(dLoss, lr: optimizer.LearningRate);
                     }
@@ -68,8 +78,15 @@ namespace MNIST.Trainer
                 float avgLoss = totalLoss / (total / batchSize);
                 float acc = (float)correct / total * 100f;
                 Debug.WriteLine($"Epoch {e + 1} | Loss: {avgLoss:F4} | Acc: {acc:F2}% | LR={optimizer.LearningRate:F6}");
-            }
 
+                if (trainLabel != null)
+                {
+                    trainLabel.Parent!.Invoke(() =>
+                    {
+                        trainLabel.Text = $"Training... Epoch {e + 1}/{epochs} | Loss: {avgLoss:F4} | Acc: {acc:F2}%";
+                    });
+                }
+            }
         }
     }
 }
