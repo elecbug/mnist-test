@@ -87,6 +87,14 @@ namespace MNIST.Trainer
                     });
                 }
             }
+
+            if (trainLabel != null)
+            {
+                trainLabel.Parent!.Invoke(() =>
+                {
+                    trainLabel.Text = "Training completed.";
+                });
+            }
         }
     }
 }
