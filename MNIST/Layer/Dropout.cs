@@ -5,7 +5,6 @@
     {
         private float rate;
         private bool[] mask = { };
-        private Random rand = new();
 
         public Dropout(float rate = 0.5f)
         {
@@ -14,11 +13,13 @@
 
         public float[] Forward(float[] input, bool training = true)
         {
+
+
             mask = new bool[input.Length];
             float[] output = new float[input.Length];
             for (int i = 0; i < input.Length; i++)
             {
-                mask[i] = training ? rand.NextDouble() > rate : true;
+                mask[i] = training ? new Random().NextDouble() > rate : true;
                 output[i] = mask[i] ? input[i] / (1f - rate) : 0f;
             }
             return output;

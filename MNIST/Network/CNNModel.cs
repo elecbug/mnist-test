@@ -1,4 +1,5 @@
-﻿using MNIST.Layers;
+﻿using MNIST.Layer;
+using MNIST.Layers;
 using System;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -15,58 +16,57 @@ namespace MNIST.Network
         private MaxPool2D pool2;
         private Dense fc1;
         private Dense fc2;
+        private Dropout drop1;
+
 
         // cache for activation derivative
         private float[] lastH1Activated = { };
 
         public CNNModel()
         {
-            conv1 = new Conv2D(1, 8, 3);     // [1x28x28] -> [8x26x26]
-            pool1 = new MaxPool2D(2, 2);     // [8x13x13]
-            conv2 = new Conv2D(8, 16, 3);    // [16x11x11]
-            pool2 = new MaxPool2D(2, 2);     // [16x5x5]
-            fc1 = new Dense(16 * 5 * 5, 64);
-            fc2 = new Dense(64, 10);
+            conv1 = new Conv2D(1, 8, 3);
+            conv2 = new Conv2D(8, 16, 3);
+            pool1 = new MaxPool2D(2, 2);
+            pool2 = new MaxPool2D(2, 2);
+            fc1 = new Dense(16 * 5 * 5, 128);
+            fc2 = new Dense(128, 10);
+            drop1 = new Dropout(0.3f);
         }
 
         public (float[] logits, float[,,] convOut) Forward(float[,,] input, bool training = true)
         {
-            // Conv/Pool stack
             var x = conv1.Forward(input);
             x = pool1.Forward(x);
             x = conv2.Forward(x);
             x = pool2.Forward(x);
 
-            // FC stack with single activation (LeakyReLU) applied here
             var flat = Flatten.Forward(x);
-            var h1 = fc1.Forward(flat);
-            h1 = Activation.LeakyReLUArray(h1, 0.01f); // apply ONCE here
-            lastH1Activated = h1;                      // cache for derivative
+            var h1 = Activation.LeakyReLUArray(fc1.Forward(flat));
+            lastH1Activated = h1;
+            h1 = drop1.Forward(h1, training);
 
             var outp = fc2.Forward(h1);
             return (Activation.Softmax(outp), x);
         }
 
-        // dLoss: dL/dy (after softmax-crossentropy simplification: p - onehot)
+
         public void Backward(float[] dLoss, float lr = 0.001f)
         {
-            // Backprop through fc2 (linear)
             var dFc2 = fc2.Backward(dLoss);
+            var dDrop = drop1.Backward(dFc2);
 
-            // Backprop through LeakyReLU between fc1 and fc2
-            var dAct = Activation.DLeakyFromActivated(lastH1Activated, 0.01f);
-            for (int i = 0; i < dFc2.Length; i++) dFc2[i] *= dAct[i];
+            var dAct = Activation.DLeakyFromActivated(lastH1Activated);
+            for (int i = 0; i < dDrop.Length; i++)
+                dDrop[i] *= dAct[i];
 
-            // Backprop through fc1 (linear)
-            var dFc1 = fc1.Backward(dFc2);
-
-            // Reshape to conv map and propagate through conv/pool
+            var dFc1 = fc1.Backward(dDrop);
             var dConvIn = To3D(dFc1, 16, 5, 5);
             var dPool2 = pool2.Backward(dConvIn);
-            var dConv2 = conv2.Backward(dPool2, lr); // lr applied inside conv
+            var dConv2 = conv2.Backward(dPool2, lr);
             var dPool1 = pool1.Backward(dConv2);
             conv1.Backward(dPool1, lr);
         }
+
 
         public void ZeroGrad()
         {

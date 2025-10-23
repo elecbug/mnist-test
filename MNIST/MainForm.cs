@@ -18,6 +18,8 @@ namespace MNIST
         private Label[] PredictLabels { get; set; }
         private ProgressBar[] PredictBars { get; set; }
 
+        private bool formClosing = false;
+
         public MainForm()
         {
             {
@@ -95,11 +97,16 @@ namespace MNIST
             }
 
             MainMenu.Items.Add("Load Model", null, (s, e) => LoadModel());
-            MainMenu.Items.Add("Train Model", null, (s, e) =>TrainModel());
-            MainMenu.Items.Add("Test Model", null, (s, e) =>TestModel());
+            MainMenu.Items.Add("Train Model", null, (s, e) => TrainModel());
+            MainMenu.Items.Add("Test Model", null, (s, e) => TestModel());
             MainMenu.Items.Add("Clear Canvas", null, (s, e) => DrawingCanvas.ClearCanvas());
 
             new Thread(Convert).Start();
+
+            FormClosing += (s, e) =>
+            {
+                formClosing = true;
+            };
         }
 
         private void LoadModel()
@@ -185,7 +192,7 @@ namespace MNIST
         private void Convert()
         {
             bool drawed = false;
-            while (true)
+            while (!formClosing)
             {
                 if (CnnModel == null)
                 {
