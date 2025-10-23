@@ -72,6 +72,7 @@ namespace MNIST
                 Height = 280,
                 BorderStyle = BorderStyle.FixedSingle,
                 SizeMode = PictureBoxSizeMode.StretchImage,
+                BackColor = Color.Black,
             };
 
             PredictLabel = new Label()
@@ -242,8 +243,20 @@ namespace MNIST
                         mnistInput = DrawingCanvas.ToMnistInput();
                     }
 
-                    var (pred, _) = CnnModel.Forward(mnistInput);
-                    int predicted = pred.IndexOfMax();
+                    Tensor1D result = new Tensor1D(10);
+                    int retry = 100;
+
+                    for (int i = 0; i < retry; i++)
+                    {
+                        var (pred, _) = CnnModel.Forward(mnistInput);
+
+                        for (int r = 0; r < result.Range0; r++)
+                        {
+                            result.Set(r, result.Get(r) + pred.Get(r));
+                        }
+                    }
+
+                    int predicted = result.IndexOfMax();
 
                     Invoke(() =>
                     {
@@ -251,7 +264,7 @@ namespace MNIST
 
                         for (int i = 0; i < 10; i++)
                         {
-                            PredictBars[i].Value = (int)(pred.Get(i) * 100f);
+                            PredictBars[i].Value = (int)(result.Get(i) * 100f / retry);
                         }
 
                         InvertedPBox.Image = DrawingCanvas.Inverted;
